@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NC·AI — Système Expert Non-Conformités CFO</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg:#0a0c10;--bg2:#0f1219;--bg3:#151a24;
+    --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+    --accent:#00d4ff;--accent2:#ff6b35;--accent3:#7fff6b;
+    --text:#e8eaf0;--text2:#8892a4;--text3:#4a5568;
+    --red:#ff4444;--orange:#ff8c42;--yellow:#ffd166;--green:#06d6a0;
+    --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+
+  header{position:relative;z-index:10;border-bottom:1px solid var(--border2);background:rgba(10,12,16,0.95);backdrop-filter:blur(12px);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;}
+  .logo{display:flex;align-items:center;gap:12px;}
+  .logo-mark{width:36px;height:36px;border:1.5px solid var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent);}
+  .logo-text{font-size:15px;font-weight:700;letter-spacing:.05em;}
+  .logo-sub{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.15em;text-transform:uppercase;margin-top:1px;}
+  .header-right{display:flex;align-items:center;gap:16px;}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite;}
+  .status-text{font-family:var(--mono);font-size:11px;color:var(--green);letter-spacing:.1em;}
+  .project-badge{background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:6px;padding:4px 10px;font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:.08em;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+  .app{position:relative;z-index:1;display:grid;grid-template-columns:1fr 460px;height:calc(100vh - 64px);}
+
+  /* LEFT */
+  .left-panel{display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;position:relative;}
+  .input-section{padding:1.5rem;border-bottom:1px solid var(--border);}
+  .section-label{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.2em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+  .section-label::before{content:'';width:16px;height:1px;background:var(--text3);}
+  .input-wrapper{position:relative;}
+  textarea{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:14px 16px;padding-right:120px;font-family:var(--sans);font-size:14px;color:var(--text);resize:none;height:110px;outline:none;transition:border-color .2s;line-height:1.6;}
+  textarea::placeholder{color:var(--text3);}
+  textarea:focus{border-color:rgba(0,212,255,.4);box-shadow:0 0 0 3px rgba(0,212,255,.06);}
+  .input-actions{position:absolute;right:10px;bottom:10px;display:flex;gap:6px;}
+  .btn-mic{width:34px;height:34px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-size:14px;}
+  .btn-mic:hover{border-color:var(--accent2);color:var(--accent2);}
+  .btn-mic.recording{background:rgba(255,107,53,.15);border-color:var(--accent2);color:var(--accent2);animation:mic-pulse 1s infinite;}
+  @keyframes mic-pulse{0%{box-shadow:0 0 0 0 rgba(255,107,53,.4);}70%{box-shadow:0 0 0 8px rgba(255,107,53,0);}100%{box-shadow:0 0 0 0 rgba(255,107,53,0);}}
+  .btn-analyze{height:34px;padding:0 16px;border-radius:8px;border:none;background:var(--accent);color:var(--bg);font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.05em;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;}
+  .btn-analyze:hover{background:#33ddff;transform:translateY(-1px);}
+  .btn-analyze:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+
+  .examples{padding:.75rem 1.5rem;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .examples-label{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.1em;white-space:nowrap;}
+  .example-chip{background:transparent;border:1px solid var(--border2);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--text2);cursor:pointer;transition:all .2s;font-family:var(--mono);white-space:nowrap;}
+  .example-chip:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.05);}
+
+  .result-area{flex:1;overflow-y:auto;padding:1.5rem;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;}
+  .empty-state{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--text3);}
+  .empty-icon{width:64px;height:64px;border:1px solid var(--border2);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;}
+  .empty-state p{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-align:center;line-height:1.8;}
+
+  .result-card{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;overflow:hidden;margin-bottom:12px;animation:slideIn .3s ease;}
+  @keyframes slideIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  .card-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .card-title{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;}
+  .card-title.nlp{color:var(--accent);}
+  .card-title.expert{color:var(--accent2);}
+  .card-title.action{color:var(--green);}
+  .card-body{padding:16px;}
+
+  .classification-path{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+  .path-segment{background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:6px;padding:4px 10px;font-family:var(--mono);font-size:11px;color:var(--accent);}
+  .path-arrow{color:var(--text3);font-size:10px;}
+
+  .confidence-bar{margin-bottom:14px;}
+  .confidence-label{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--text2);margin-bottom:5px;}
+  .bar-track{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:2px;transition:width .8s ease;}
+  .bar-fill.high{background:var(--green);}
+  .bar-fill.med{background:var(--yellow);}
+  .bar-fill.low{background:var(--red);}
+
+  .criticality-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;margin-bottom:12px;}
+  .crit-critical{background:rgba(255,68,68,.12);border:1px solid rgba(255,68,68,.3);color:var(--red);}
+  .crit-high{background:rgba(255,140,66,.12);border:1px solid rgba(255,140,66,.3);color:var(--orange);}
+  .crit-medium{background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.3);color:var(--yellow);}
+  .crit-low{background:rgba(6,214,160,.12);border:1px solid rgba(6,214,160,.3);color:var(--green);}
+
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+  .info-item{background:var(--bg3);border-radius:8px;padding:10px 12px;}
+  .info-item-label{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.15em;text-transform:uppercase;margin-bottom:4px;}
+  .info-item-value{font-size:13px;color:var(--text);font-weight:600;line-height:1.3;}
+  .iso-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(127,255,107,.06);border:1px solid rgba(127,255,107,.15);border-radius:6px;padding:3px 8px;font-family:var(--mono);font-size:10px;color:var(--accent3);margin-top:10px;}
+
+  .action-list{display:flex;flex-direction:column;gap:8px;}
+  .action-item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:var(--bg3);border-radius:8px;border-left:2px solid var(--green);}
+  .action-num{font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;min-width:18px;padding-top:1px;}
+  .action-text{font-size:13px;color:var(--text2);line-height:1.5;}
+
+  /* RIGHT */
+  .right-panel{display:flex;flex-direction:column;background:var(--bg2);overflow:hidden;}
+  .panel-tabs{display:flex;border-bottom:1px solid var(--border);}
+  .tab{flex:1;padding:14px 6px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);cursor:pointer;text-align:center;border-bottom:2px solid transparent;transition:all .2s;}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .tab:hover:not(.active){color:var(--text2);}
+  .tab-content{display:none;flex:1;overflow-y:auto;padding:1rem;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;}
+  .tab-content.active{display:block;}
+
+  /* HISTORY */
+  .history-item{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;transition:all .2s;}
+  .history-item:hover{border-color:var(--border2);}
+  .history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .history-type{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:.08em;}
+  .history-time{font-family:var(--mono);font-size:9px;color:var(--text3);}
+  .history-text{font-size:12px;color:var(--text2);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .history-badge{display:inline-block;margin-top:6px;padding:2px 8px;border-radius:4px;font-family:var(--mono);font-size:9px;}
+
+  /* STATS */
+  .stats-kpi{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+  .kpi-card{background:var(--bg3);border-radius:10px;padding:12px;border:1px solid var(--border);}
+  .kpi-val{font-size:26px;font-weight:800;line-height:1;margin-bottom:3px;}
+  .kpi-lbl{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;}
+
+  .chart-block{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;}
+  .chart-title{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:.15em;text-transform:uppercase;margin-bottom:10px;}
+  .chart-wrap{position:relative;}
+
+  /* REFERENTIEL */
+  .ref-section{margin-bottom:16px;}
+  .ref-title{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px;}
+  .ref-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:7px;margin-bottom:5px;font-size:12px;color:var(--text2);line-height:1.4;}
+  .ref-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);margin-top:5px;flex-shrink:0;}
+
+  /* LOADING */
+  .loading-overlay{display:none;position:absolute;inset:0;background:rgba(10,12,16,.85);backdrop-filter:blur(4px);z-index:50;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
+  .loading-overlay.active{display:flex;}
+  .loader-ring{width:48px;height:48px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loader-steps{display:flex;flex-direction:column;gap:4px;}
+  .loader-step{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.08em;display:flex;align-items:center;gap:8px;}
+  .loader-step.done{color:var(--green);}
+  .loader-step.active{color:var(--accent);}
+  .step-indicator{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
+  .loader-step.active .step-indicator{animation:pulse .8s infinite;}
+
+  .btn-export{width:100%;padding:10px;background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-family:var(--mono);font-size:10px;letter-spacing:.1em;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-top:10px;}
+  .btn-export:hover{border-color:var(--accent);color:var(--accent);}
+
+  ::-webkit-scrollbar{width:4px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">NC</div>
+    <div>
+      <div class="logo-text">NC·AI Expert System CMS</div>
+      <div class="logo-sub">Hotel Mixed-Use — CFO Quality Control</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="project-badge">CHANTIER · HOTEL MIXED-USE</div>
+    <div class="status-dot"></div>
+    <div class="status-text">SYSTÈME ACTIF</div>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- LEFT -->
+  <div class="left-panel">
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="loader-ring"></div>
+      <div class="loader-steps">
+        <div class="loader-step" id="step1"><span class="step-indicator"></span>Analyse NLP en cours...</div>
+        <div class="loader-step" id="step2"><span class="step-indicator"></span>Classification référentiel CFO...</div>
+        <div class="loader-step" id="step3"><span class="step-indicator"></span>Consultation base historique...</div>
+        <div class="loader-step" id="step4"><span class="step-indicator"></span>Génération plan d'action ISO 9001...</div>
+      </div>
+    </div>
+
+    <div class="input-section">
+      <div class="section-label">Saisie Observation NC</div>
+      <div class="input-wrapper">
+        <textarea id="ncInput" placeholder="Décrivez la non-conformité observée sur le chantier... (ex: Les fourreaux pour l'éclairage dans la dalle du 3ème étage sont trop bas)"></textarea>
+        <div class="input-actions">
+          <button class="btn-mic" id="micBtn" title="Saisie vocale" onclick="toggleMic()">🎙️</button>
+          <button class="btn-analyze" id="analyzeBtn" onclick="analyzeNC()"><span>⚡</span> ANALYSER</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="examples">
+      <span class="examples-label">EXEMPLES :</span>
+      <span class="example-chip" onclick="setExample(0)">Coffret non étiqueté</span>
+      <span class="example-chip" onclick="setExample(1)">Fourreau trop bas dalle</span>
+      <span class="example-chip" onclick="setExample(2)">Câble sans protection</span>
+      <span class="example-chip" onclick="setExample(3)">Prise mal fixée</span>
+      <span class="example-chip" onclick="setExample(4)">Éclairage non conforme</span>
+    </div>
+
+    <div class="result-area" id="resultArea">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">⚡</div>
+        <p>Saisissez une observation<br>pour activer l'analyse IA</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-panel">
+    <div class="panel-tabs">
+      <div class="tab active" onclick="switchTab('history')">Historique</div>
+      <div class="tab" onclick="switchTab('stats')">Statistiques</div>
+      <div class="tab" onclick="switchTab('ref')">Référentiel</div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="tab-content active" id="tab-history">
+      <div id="historyList">
+        <div style="text-align:center;padding:40px 0;color:var(--text3);font-family:var(--mono);font-size:11px;letter-spacing:.1em;">Aucune NC analysée</div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="tab-content" id="tab-stats">
+      <div class="stats-kpi">
+        <div class="kpi-card"><div class="kpi-val" id="stat-total" style="color:var(--accent)">0</div><div class="kpi-lbl">NC Analysées</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="stat-critical" style="color:var(--red)">0</div><div class="kpi-lbl">Critiques</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="stat-high" style="color:var(--orange)">0</div><div class="kpi-lbl">Élevées</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="stat-resolved" style="color:var(--green)">0</div><div class="kpi-lbl">Résolues</div></div>
+      </div>
+
+      <!-- PARETO -->
+      <div class="chart-block">
+        <div class="chart-title">⬡ Diagramme de Pareto — NC par catégorie</div>
+        <div class="chart-wrap" style="height:200px;">
+          <canvas id="paretoChart" role="img" aria-label="Pareto des NC CFO par catégorie">Pareto NC CFO</canvas>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
+          <span style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;color:var(--text3);">
+            <span style="width:10px;height:10px;border-radius:2px;background:#00d4ff;display:inline-block;"></span>NC (vital)
+          </span>
+          <span style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;color:var(--text3);">
+            <span style="width:10px;height:10px;border-radius:2px;background:#2a3a4a;display:inline-block;"></span>NC (trivial)
+          </span>
+          <span style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;color:var(--text3);">
+            <span style="width:10px;height:2px;background:#ff6b35;display:inline-block;"></span>% cumulé
+          </span>
+        </div>
+      </div>
+
+      <!-- CRITICITE PIE -->
+      <div class="chart-block">
+        <div class="chart-title">◈ Distribution criticité</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center;">
+          <div class="chart-wrap" style="height:140px;">
+            <canvas id="critChart" role="img" aria-label="Distribution criticité">Criticité NC</canvas>
+          </div>
+          <div id="critLegend" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+      </div>
+
+      <!-- TIMELINE -->
+      <div class="chart-block">
+        <div class="chart-title">↗ Évolution NC dans le temps</div>
+        <div class="chart-wrap" style="height:130px;">
+          <canvas id="timelineChart" role="img" aria-label="Évolution NC dans le temps">Timeline NC</canvas>
+        </div>
+      </div>
+
+      <button class="btn-export" onclick="exportData()">⬇ Exporter rapport CSV</button>
+    </div>
+
+    <!-- REF -->
+    <div class="tab-content" id="tab-ref">
+      <div class="ref-section">
+        <div class="ref-title">Catégories CFO</div>
+        <div class="ref-item"><span class="ref-dot"></span>Coffret — Armoire électrique, câblage interne, protection</div>
+        <div class="ref-item"><span class="ref-dot"></span>Tubage — Fourreaux, conduits, altimétrie, fixation</div>
+        <div class="ref-item"><span class="ref-dot"></span>Tirage de câble — Rayon de courbure, protection mécanique</div>
+        <div class="ref-item"><span class="ref-dot"></span>Éclairage — Implantation, raccordement, conformité plan</div>
+        <div class="ref-item"><span class="ref-dot"></span>Prise de courant — Mise à la terre, hauteur, fixation</div>
+        <div class="ref-item"><span class="ref-dot"></span>Chemain de câble — Support, fixation, continuité</div>
+        <div class="ref-item"><span class="ref-dot"></span>Mise à la terre — Continuité, résistance, connexions</div>
+        <div class="ref-item"><span class="ref-dot"></span>Transformateur HT — Raccordements, protection, signalisation</div>
+        <div class="ref-item"><span class="ref-dot"></span>Groupe électrogène — Installation, raccordement, démarrage</div>
+        <div class="ref-item"><span class="ref-dot"></span>Cellule MT — Montage, alignement, verrouillage</div>
+      </div>
+      <div class="ref-section">
+        <div class="ref-title">Niveaux de criticité ISO 9001</div>
+        <div class="ref-item"><span style="width:5px;height:5px;border-radius:50%;background:var(--red);flex-shrink:0;margin-top:5px;display:block;"></span>CRITIQUE — Risque sécurité / arrêt travaux immédiat</div>
+        <div class="ref-item"><span style="width:5px;height:5px;border-radius:50%;background:var(--orange);flex-shrink:0;margin-top:5px;display:block;"></span>ÉLEVÉE — Impact fonctionnel majeur / délai &lt;48h</div>
+        <div class="ref-item"><span style="width:5px;height:5px;border-radius:50%;background:var(--yellow);flex-shrink:0;margin-top:5px;display:block;"></span>MOYENNE — Non-conformité documentaire / délai 1 semaine</div>
+        <div class="ref-item"><span style="width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0;margin-top:5px;display:block;"></span>FAIBLE — Observation mineure / levée prochaine visite</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────
+const EXAMPLES = [
+  "Le coffret électrique du RDC n'est pas étiqueté et les disjoncteurs ne sont pas identifiés selon le schéma unifilaire",
+  "Les fourreaux pour l'éclairage dans la dalle du 3ème étage sont trop bas, l'altimétrie ne correspond pas aux plans d'exécution",
+  "Le câble d'alimentation principale dans le couloir technique du sous-sol n'est pas protégé mécaniquement sur une longueur de 4 mètres",
+  "Trois prises de courant au 2ème étage côté bureau sont mal fixées et le fil de terre n'est pas connecté",
+  "Les luminaires du hall d'entrée ne respectent pas l'implantation du plan d'éclairage, décalage de 40cm vers l'est",
+];
+
+const KB = {
+  coffret:{category:"CFO > Coffret",subcategory:"Identification & câblage interne",keywords:["coffret","armoire","disjoncteur","schéma","unifilaire","tableau","étiquette","bornage"],criticality:"high",actions:["Apposer les étiquettes d'identification conformément au schéma unifilaire approuvé","Vérifier le serrage de tous les raccordements internes selon norme NF C 15-100","Compléter le DOE avec les schémas à jour","Programmer une contre-visite dans les 48h avec le chef électricien"],norm:"NF C 15-100 §533 + ISO 9001:2015 §8.5.1",delay:"48h"},
+  tubage:{category:"CFO > Tubage > Altimétrie",subcategory:"Altimétrie & fixation des conduits",keywords:["fourreau","tubage","conduit","dalle","altimétrie","trop bas","trop haut","niveau","coulage"],criticality:"critical",actions:["Stopper le coulage jusqu'à correction complète de l'altimétrie","Ajuster les supports de tubage avant coulage et vérifier le traçage laser","Contrôler l'ensemble des fourreaux de la dalle avec le géomètre","Établir un PV de contrôle contradictoire avant reprise des travaux"],norm:"DTU 70.1 + Cahier des charges CMS §4.2.3 + ISO 9001:2015 §8.7",delay:"Immédiat"},
+  cable:{category:"CFO > Tirage câble",subcategory:"Protection & rayon de courbure",keywords:["câble","tirage","protection","mécanique","courbure","chemisage","gaine","passage"],criticality:"high",actions:["Installer une gaine ICTA ou chemin de câble sur les zones exposées","Respecter le rayon de courbure minimum (6x Ø câble)","Documenter les écarts avec photos géolocalisées","Valider la reprise avec l'inspecteur qualité avant remise en service"],norm:"NF C 15-100 §521 + ISO 9001:2015 §8.5.1",delay:"72h"},
+  prise:{category:"CFO > Prise de courant",subcategory:"Fixation & connexion terre",keywords:["prise","courant","terre","fixation","raccordement","connecté","hauteur","sortie"],criticality:"critical",actions:["Couper l'alimentation du circuit concerné immédiatement","Rétablir la connexion de terre sur toutes les prises défectueuses","Mesurer la résistance de terre (objectif : < 1 Ω)","Vérifier la conformité des hauteurs de pose selon plan"],norm:"NF C 15-100 §413 + NF EN 60669 + ISO 9001:2015 §8.7",delay:"Immédiat"},
+  eclairage:{category:"CFO > Éclairage",subcategory:"Implantation & conformité plan",keywords:["luminaire","éclairage","lumière","spot","implantation","position","plan","décalage","plafonnier"],criticality:"medium",actions:["Vérifier les cotes d'implantation sur plan d'exécution visé par le BET","Repositionner les luminaires non conformes avant fermeture des plafonds","Mettre à jour les plans de recollement avec les positions réelles","Valider photométriquement la nouvelle implantation"],norm:"NF EN 12464-1 + ISO 9001:2015 §8.5.1",delay:"1 semaine"},
+  default:{category:"CFO > Général",subcategory:"Contrôle qualité CFO",keywords:[],criticality:"medium",actions:["Documenter la non-conformité avec photos et description précise","Identifier le responsable d'exécution et notifier par fiche NC","Définir le délai de levée et programmer une contre-visite","Enregistrer dans le registre qualité du chantier"],norm:"ISO 9001:2015 §8.7",delay:"À définir"},
+};
+
+const CRIT_LABELS={critical:"CRITIQUE",high:"ÉLEVÉE",medium:"MOYENNE",low:"FAIBLE"};
+const CRIT_CLASSES={critical:"crit-critical",high:"crit-high",medium:"crit-medium",low:"crit-low"};
+const CRIT_ICONS={critical:"🔴",high:"🟠",medium:"🟡",low:"🟢"};
+const CRIT_COLORS={critical:"#ff4444",high:"#ff8c42",medium:"#ffd166",low:"#06d6a0"};
+
+let history=[], catCount={}, critCount={critical:0,high:0,medium:0,low:0};
+let timelineData=[];
+let paretoChart=null, critChart=null, timelineChart=null;
+let isRecording=false, recognition=null;
+
+// ── HELPERS ────────────────────────────────────────────────────────
+function setExample(i){document.getElementById('ncInput').value=EXAMPLES[i];}
+
+function classify(text){
+  const t=text.toLowerCase();
+  for(const [key,kb] of Object.entries(KB)){
+    if(key==='default') continue;
+    if(kb.keywords.some(k=>t.includes(k))) return kb;
+  }
+  return KB.default;
+}
+
+function confidence(text,kb){
+  if(kb===KB.default) return 52;
+  const t=text.toLowerCase();
+  const m=kb.keywords.filter(k=>t.includes(k)).length;
+  return Math.min(95,65+m*8);
+}
+
+// ── LOADING ────────────────────────────────────────────────────────
+function showLoading(){
+  document.getElementById('loadingOverlay').classList.add('active');
+  ['step1','step2','step3','step4'].forEach(s=>{
+    document.getElementById(s).classList.remove('done','active');
+  });
+  [400,900,1400,2000].forEach((delay,i)=>{
+    setTimeout(()=>{
+      const steps=['step1','step2','step3','step4'];
+      if(i>0){document.getElementById(steps[i-1]).classList.remove('active');document.getElementById(steps[i-1]).classList.add('done');}
+      document.getElementById(steps[i]).classList.add('active');
+    },delay-400);
+  });
+}
+function hideLoading(){document.getElementById('loadingOverlay').classList.remove('active');}
+
+// ── ANALYZE ────────────────────────────────────────────────────────
+async function analyzeNC(){
+  const text=document.getElementById('ncInput').value.trim();
+  if(!text) return;
+  document.getElementById('analyzeBtn').disabled=true;
+  showLoading();
+  await new Promise(r=>setTimeout(r,2400));
+  hideLoading();
+
+  const kb=classify(text);
+  const conf=confidence(text,kb);
+  const confClass=conf>=80?'high':conf>=60?'med':'low';
+  const now=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  const dateLabel=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
+
+  history.unshift({text,kb,conf,time:now,date:dateLabel,resolved:false});
+  catCount[kb.category]=(catCount[kb.category]||0)+1;
+  critCount[kb.criticality]++;
+
+  // timeline: compter par date
+  const existing=timelineData.find(d=>d.label===dateLabel);
+  if(existing) existing.count++;
+  else timelineData.push({label:dateLabel,count:1});
+
+  renderResult(text,kb,conf,confClass,now);
+  renderHistory();
+  renderStats();
+  document.getElementById('analyzeBtn').disabled=false;
+  document.getElementById('ncInput').value='';
+}
+
+// ── RESULT ─────────────────────────────────────────────────────────
+function renderResult(text,kb,conf,confClass,time){
+  document.getElementById('emptyState')?.remove();
+  const pathParts=kb.category.split(' > ');
+  const pathHtml=pathParts.map((p,i)=>`<span class="path-segment">${p}</span>${i<pathParts.length-1?'<span class="path-arrow">›</span>':''}`).join('');
+  const actionsHtml=kb.actions.map((a,i)=>`<div class="action-item"><span class="action-num">0${i+1}</span><span class="action-text">${a}</span></div>`).join('');
+
+  document.getElementById('resultArea').innerHTML=`
+    <div class="result-card">
+      <div class="card-header"><span class="card-title nlp">⬡ MODULE NLP — CLASSIFICATION</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3);">${time}</span></div>
+      <div class="card-body">
+        <div style="background:var(--bg3);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text2);line-height:1.5;font-style:italic;">"${text}"</div>
+        <div class="classification-path">${pathHtml}</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px;font-family:var(--mono);">Sous-type : <span style="color:var(--text2);">${kb.subcategory}</span></div>
+        <div class="confidence-bar">
+          <div class="confidence-label"><span>Confiance NLP</span><span style="color:${confClass==='high'?'var(--green)':confClass==='med'?'var(--yellow)':'var(--red)'};">${conf}%</span></div>
+          <div class="bar-track"><div class="bar-fill ${confClass}" style="width:${conf}%"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="result-card">
+      <div class="card-header"><span class="card-title expert">◈ SYSTÈME EXPERT — DIAGNOSTIC</span></div>
+      <div class="card-body">
+        <div class="criticality-badge ${CRIT_CLASSES[kb.criticality]}">${CRIT_ICONS[kb.criticality]} CRITICITÉ : ${CRIT_LABELS[kb.criticality]}</div>
+        <div class="info-grid">
+          <div class="info-item"><div class="info-item-label">Délai de levée</div><div class="info-item-value">${kb.delay}</div></div>
+          <div class="info-item"><div class="info-item-label">Référence norme</div><div class="info-item-value" style="font-size:11px;font-family:var(--mono);">${kb.norm.split('+')[0].trim()}</div></div>
+        </div>
+        <div class="iso-tag">⚖ ${kb.norm}</div>
+      </div>
+    </div>
+    <div class="result-card">
+      <div class="card-header"><span class="card-title action">✓ PLAN D'ACTION CORRECTIVE</span></div>
+      <div class="card-body">
+        <div class="action-list">${actionsHtml}</div>
+        <button class="btn-export" onclick="markResolved(0)" style="margin-top:10px;">✓ Marquer comme levée</button>
+      </div>
+    </div>`;
+}
+
+// ── HISTORY ────────────────────────────────────────────────────────
+function renderHistory(){
+  if(!history.length) return;
+  document.getElementById('historyList').innerHTML=history.map((item,i)=>`
+    <div class="history-item" onclick="reloadResult(${i})">
+      <div class="history-header">
+        <span class="history-type">${item.kb.category.split(' > ')[1]||'CFO'}</span>
+        <span class="history-time">${item.time}</span>
+      </div>
+      <div class="history-text">${item.text}</div>
+      <span class="history-badge ${CRIT_CLASSES[item.kb.criticality]}" style="font-family:var(--mono);font-size:9px;">${CRIT_ICONS[item.kb.criticality]} ${CRIT_LABELS[item.kb.criticality]}</span>
+      ${item.resolved?'<span style="font-family:var(--mono);font-size:9px;color:var(--green);margin-left:6px;">✓ LEVÉE</span>':''}
+    </div>`).join('');
+}
+
+// ── STATS + CHARTS ─────────────────────────────────────────────────
+function renderStats(){
+  const total=history.length;
+  document.getElementById('stat-total').textContent=total;
+  document.getElementById('stat-critical').textContent=critCount.critical;
+  document.getElementById('stat-high').textContent=critCount.high;
+  document.getElementById('stat-resolved').textContent=history.filter(h=>h.resolved).length;
+
+  if(total===0) return;
+  renderPareto();
+  renderCritChart();
+  renderTimeline();
+}
+
+function renderPareto(){
+  // Sort categories by count desc
+  const sorted=Object.entries(catCount).sort((a,b)=>b[1]-a[1]);
+  const labels=sorted.map(([k])=>k.split(' > ').slice(1).join(' > ')||k);
+  const values=sorted.map(([,v])=>v);
+  const total=values.reduce((a,b)=>a+b,0);
+
+  let cumul=0;
+  const cumPcts=values.map(v=>{cumul+=v;return Math.round(cumul/total*100);});
+
+  // Vital = before crossing 80%
+  const bgColors=values.map((_,i)=>cumPcts[i]<=80||i===0?'#00d4ff':'#2a3a4a');
+
+  if(paretoChart){paretoChart.destroy();}
+  const ctx=document.getElementById('paretoChart').getContext('2d');
+  paretoChart=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {type:'bar',data:values,backgroundColor:bgColors,borderWidth:0,yAxisID:'y',order:2},
+        {type:'line',data:cumPcts,borderColor:'#ff6b35',backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointBackgroundColor:'#ff6b35',yAxisID:'y2',order:1}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        label:(ctx)=>ctx.datasetIndex===0?' '+ctx.raw+' NC':' '+ctx.raw+'% cumulé'
+      }}},
+      scales:{
+        x:{ticks:{color:'#4a5568',font:{size:9},maxRotation:35},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{position:'left',ticks:{color:'#4a5568',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}},
+        y2:{position:'right',min:0,max:100,ticks:{color:'#ff6b35',font:{size:9},callback:v=>v+'%'},grid:{display:false}}
+      }
+    }
+  });
+}
+
+function renderCritChart(){
+  const labels=['Critique','Élevée','Moyenne','Faible'];
+  const values=[critCount.critical,critCount.high,critCount.medium,critCount.low];
+  const colors=['#ff4444','#ff8c42','#ffd166','#06d6a0'];
+  const total=values.reduce((a,b)=>a+b,0);
+
+  if(critChart){critChart.destroy();}
+  const ctx=document.getElementById('critChart').getContext('2d');
+  critChart=new Chart(ctx,{
+    type:'doughnut',
+    data:{labels,datasets:[{data:values,backgroundColor:colors,borderWidth:0,hoverOffset:4}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,cutout:'65%',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:(c)=>` ${c.label}: ${c.raw} (${total?Math.round(c.raw/total*100):0}%)`}}}
+    }
+  });
+
+  // Custom legend
+  document.getElementById('critLegend').innerHTML=labels.map((l,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="width:10px;height:10px;border-radius:2px;background:${colors[i]};flex-shrink:0;display:inline-block;"></span>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--text2);">${l} <strong style="color:var(--text);">${values[i]}</strong></span>
+    </div>`).join('');
+}
+
+function renderTimeline(){
+  const labels=timelineData.map(d=>d.label);
+  const values=timelineData.map(d=>d.count);
+
+  if(timelineChart){timelineChart.destroy();}
+  const ctx=document.getElementById('timelineChart').getContext('2d');
+  timelineChart=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels,
+      datasets:[{
+        label:'NC / jour',data:values,
+        borderColor:'#7fff6b',backgroundColor:'rgba(127,255,107,0.08)',
+        borderWidth:2,pointRadius:4,pointBackgroundColor:'#7fff6b',
+        fill:true,tension:0.3
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#4a5568',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{ticks:{color:'#4a5568',font:{size:9},stepSize:1},grid:{color:'rgba(255,255,255,0.04)'},min:0}
+      }
+    }
+  });
+}
+
+// ── ACTIONS ────────────────────────────────────────────────────────
+function markResolved(i){
+  if(history[i]){history[i].resolved=true;renderHistory();renderStats();}
+}
+
+function reloadResult(i){
+  const item=history[i];
+  const conf=item.conf;
+  const confClass=conf>=80?'high':conf>=60?'med':'low';
+  renderResult(item.text,item.kb,conf,confClass,item.time);
+  switchTab('history');
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  const idx=['history','stats','ref'].indexOf(tab);
+  document.querySelectorAll('.tab')[idx].classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='stats'&&history.length>0){
+    setTimeout(()=>{renderPareto();renderCritChart();renderTimeline();},50);
+  }
+}
+
+function toggleMic(){
+  if(!('webkitSpeechRecognition'in window)&&!('SpeechRecognition'in window)){
+    alert("Reconnaissance vocale non supportée. Utilisez Chrome.");return;
+  }
+  const btn=document.getElementById('micBtn');
+  if(isRecording){recognition?.stop();isRecording=false;btn.classList.remove('recording');btn.textContent='🎙️';return;}
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR();
+  recognition.lang='fr-FR';recognition.continuous=false;recognition.interimResults=false;
+  recognition.onresult=(e)=>{document.getElementById('ncInput').value=e.results[0][0].transcript;isRecording=false;btn.classList.remove('recording');btn.textContent='🎙️';};
+  recognition.onerror=recognition.onend=()=>{isRecording=false;btn.classList.remove('recording');btn.textContent='🎙️';};
+  recognition.start();isRecording=true;btn.classList.add('recording');btn.textContent='⏹️';
+}
+
+function exportData(){
+  if(!history.length){alert("Aucune donnée.");return;}
+  const rows=[['Heure','Date','Observation','Catégorie','Criticité','Délai','Norme','Levée']];
+  history.forEach(h=>rows.push([h.time,h.date,`"${h.text}"`,h.kb.category,CRIT_LABELS[h.kb.criticality],h.kb.delay,h.kb.norm,h.resolved?'Oui':'Non']));
+  const csv=rows.map(r=>r.join(';')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`NC_CFO_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+document.getElementById('ncInput').addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();analyzeNC();}
+});
+</script>
+</body>
+</html>
