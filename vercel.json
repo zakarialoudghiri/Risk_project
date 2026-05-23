@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "rootDirectory": "Risk_project_frontend",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist"
+}
