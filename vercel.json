@@ -1,6 +1,7 @@
 {
   "version": 2,
-  "rootDirectory": "Risk_project_frontend",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist"
+  "framework": "vite",
+  "installCommand": "cd Risk_project_frontend && npm install",
+  "buildCommand": "cd Risk_project_frontend && npm run build",
+  "outputDirectory": "Risk_project_frontend/dist"
 }
